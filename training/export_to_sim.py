@@ -14,5 +14,5 @@ weights_dict = {}
 for name, param in model.named_parameters():
     weights_dict[name.replace('.', '_')] = param.detach().numpy()
 
-sio.savemat('phnode_weights.mat', weights_dict)
+sio.savemat('phnode_weights_3_8.mat', weights_dict)
 print("Saved phnode_weights.mat")
