@@ -125,7 +125,7 @@ python datasets/preprocess.py --converter_model IGBT --normalization 0
 
 The released processed data are based on the **IGBT/Diode detailed model (M1)**. Use `--converter_model Switching` only if you intentionally want to build a switching-function surrogate model.
 
-### Step 3 — Training
+### Step 3 — Train and Inference
 
 Install dependencies and launch training:
 
@@ -158,18 +158,7 @@ The trained checkpoint is saved to:
 training/checkpoints/IGBT_ConverterPHNN_RNonlinearDiag2_Pinvnominal_archmlp.pt
 ```
 
-### Step 4 — Inference
-
-Run long-horizon rollout tests with the trained checkpoint:
-
-```bash
-cd training
-python inference.py
-```
-
-Generated figures are saved under `training/results/`.
-
-### Step 5 — Export to Simulink
+### Step 4 — Export to Simulink
 
 Convert the trained PyTorch weights into a MATLAB `.mat` file for use in Simulink:
 
@@ -185,7 +174,7 @@ simulink/offline/phnode_weights_3_8.mat
 simulink/realtime/phnode_weights_3_8.mat
 ```
 
-### Step 6 — Offline Validation (Simulink)
+### Step 5 — Offline Validation (Simulink)
 
 Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink.
 
@@ -201,7 +190,7 @@ Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink
 2. Run `Export_result_plot.m` to save `Y_IGBT.mat`, `Y_pred.mat`, `Y_SWF.mat`.
 3. Run `Compare_error.m` to compute error metrics against M1.
 
-### Step 7 — Real-Time HIL Validation (OPAL-RT)
+### Step 6 — Real-Time HIL Validation (OPAL-RT)
 
 Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-loop testing.
 
