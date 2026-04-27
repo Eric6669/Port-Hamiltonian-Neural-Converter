@@ -211,3 +211,31 @@ Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-lo
 - `simulink/realtime/RT_AI.slx` — M3 pH-NODE neural converter.
 - `simulink/realtime/Net_improve_init.m` and `phnode_weights_3_8.mat` — initialization and weights.
 
+## Pre-Trained Results
+
+The repository includes exported result data and figures for the paper's three validation cases:
+
+| Case | Directory |
+|------|-----------|
+| Open-loop (ac sag + dc step) | `training/plots/open_1.0s_ac_1.0_0.8_2.0s_dc_3000_2800/` |
+| Closed-loop (power step + dc step) | `training/plots/close_1.0s_p_0.8_0.6_2.0s_dc_3000_2800/` |
+| HIL (dc step + power step) | `training/plots/HIL_1.0s_dc_3000_3200_2.0s_p_0.8_0.6/` |
+
+Each directory contains the exported `.mat` files and SVG comparison figures. The HIL directory additionally includes raw OPAL-RT exports and `from_HIL_to_py.m` for format conversion.
+
+## Citation
+
+If you find this work useful, please cite:
+
+```bibtex
+@article{
+  title   = {Physics-Priori Neural Converters Modelling for Intelligent EMT Simulation},
+  author  = {...},
+  journal = {...},
+  year    = {2026}
+}
+```
+
+## License
+
+This project is released under the [MIT License](LICENSE).
