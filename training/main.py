@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     # --- training ---
     parser.add_argument('--lr', type=float, default=0.003329440205897641)
-    parser.add_argument("--epochs", type=int, default=50)
+    parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--weight_decay", type=float, default=0.0009831502750510465)
     parser.add_argument("--patience", type=int, default=14)
     parser.add_argument("--warmup_steps", type=int, default=9)
