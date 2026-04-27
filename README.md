@@ -211,7 +211,7 @@ Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-lo
 - `simulink/realtime/RT_AI.slx` — M3 pH-NODE neural converter.
 - `simulink/realtime/Net_improve_init.m` and `phnode_weights_3_8.mat` — initialization and weights.
 
-## Pre-Trained Results
+## Performance Validation Results
 
 The repository includes exported result data and figures for the paper's three validation cases:
 
