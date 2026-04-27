@@ -5,7 +5,7 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![MATLAB](https://img.shields.io/badge/MATLAB-R2018b-red.svg)
 ![Python](https://img.shields.io/badge/Python-3.10.19-blue.svg)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.9.1%2Bcu128-ee4c2c.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.9.1-ee4c2c.svg)
 ![CUDA](https://img.shields.io/badge/CUDA-12.8-76b900.svg)
 
 </div>
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/framework.png" alt="Physics-priori neural converter framework" width="850">
+  <img src="docs/framework.png" alt="Physics-priori neural converter framework" width="400">
 </p>
 
 Power-electronic-converter dominated grids require electromagnetic transient (EMT) models that are simultaneously fast, accurate, and stable over long rollouts. Conventional detailed IGBT/Diode models provide high fidelity but are expensive for real-time simulation, while switching-function models improve speed at the cost of neglected nonlinear and dissipative dynamics. Pure black-box neural surrogates can learn from data, but they do not preserve converter structure and may accumulate non-physical errors.
