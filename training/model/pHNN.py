@@ -11,8 +11,6 @@ from model.mlp import MLP
 def _build_backbone(arch, input_dim, hidden_dim, output_dim, depth):
     if arch == "mlp":
         return MLP(input_dim, hidden_dim, output_dim, depth)
-    elif arch == "kan":
-        raise ValueError("KAN backbone is not included in this release; use arch=mlp.")
     else:
         raise ValueError(f"Unknown backbone: {arch}")
 
@@ -103,7 +101,7 @@ class RLinear(nn.Module):
 
 class RDefault(nn.Module):
     """
-    MLP/KAN  R = L L^T / sqrt(n)
+    MLP  R = L L^T / sqrt(n)
     """
 
     def __init__(self, state_dim, sw_dim, hidden_dim, depth, arch="mlp"):
@@ -124,7 +122,7 @@ class RDefault(nn.Module):
 
 class RNonlinearDiag(nn.Module):
     """
-    MLP/KAN for R = diag(Softplus(net(z, u_sw)))
+    MLP for R = diag(Softplus(net(z, u_sw)))
     """
 
     def __init__(self, state_dim, sw_dim, hidden_dim, depth, arch="mlp"):
@@ -151,7 +149,7 @@ class RNonlinearDiag(nn.Module):
 
 class RNonlinearDiag2(nn.Module):
     """
-    MLP/KAN for R = diag(Softplus(net(z, u_sw)))
+    MLP for R = diag(Softplus(net(z, u_sw)))
     """
 
     def __init__(self, state_dim, sw_dim, hidden_dim, depth, arch="mlp"):
@@ -251,7 +249,7 @@ class ConverterPHNN(nn.Module):
         sw_dim : int        6
         R : str             "prior_diag" | "linear" | "default"
         Pinv : str          "prior_diag" | "linear" | "default"
-        arch : str          "mlp" | "kan"
+        arch : str          "mlp"
     """
 
     def __init__(
