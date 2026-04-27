@@ -28,10 +28,10 @@ This repository provides the implementation of a **physics-priori neural convert
 
 **Our Contribution:**
 
-- **Port-Hamiltonian neural converter** that preserves the known converter interconnection structure.
-- **Passivity-oriented formulation** that supports bounded long-horizon EMT rollout.
+- **A physics-priori Port-Hamiltonian neural converter**.
+- **A passivity-based mechanism** supports bounded long-horizon EMT rollout.
 - **Offline and real-time validation** against detailed IGBT/Diode and switching-function models.
-- **Reproducible code and models** for data generation, pH-NODE training, Simulink deployment, and paper-case plotting.
+- **Reproducible code and models**.
 
 ## Environment
 
@@ -41,7 +41,7 @@ This repository provides the implementation of a **physics-priori neural convert
 | --- | --- |
 | MATLAB/Simulink | MATLAB R2018b |
 | Python | 3.10.19 |
-| PyTorch | 2.9.1+cu128 |
+| PyTorch | 2.9.1 |
 | CUDA | 12.8 |
 
 ### Hardware Environment
@@ -77,10 +77,8 @@ training/
 The paper compares three converter models:
 
 - **M1: IGBT/Diode detailed model**. This is the Simscape Universal Bridge reference model and is treated as ground truth.
-- **M2: switching-function model**. This uses the ideal switching-function approximation for faster EMT simulation.
-- **M3: pH-NODE neural converter**. This keeps the port-Hamiltonian interconnection structure and learns the dissipation matrix and inverse parameter matrix.
-
-The offline Simulink model `simulink/offline/Compare_AI_kk.mdl` contains M1, M2, and M3 for open-loop and closed-loop comparison. The real-time models are separated as `RT_IGBT.slx`, `RT_SWF.slx`, and `RT_AI.slx` under `simulink/realtime/`.
+- **M2: switching-function model**. This uses the ideal switching-function approximation for real-time EMT simulation.
+- **M3: pH-NODE neural converter**. This is our proposed model.
 
 ## Simulink Files
 
@@ -91,7 +89,7 @@ The offline Simulink model `simulink/offline/Compare_AI_kk.mdl` contains M1, M2,
 
 `simulink/offline/` contains the offline validation workflow:
 
-- `Compare_AI_kk.mdl` and `Compare_AI_kk.slxc`: comparison model for M1, M2, and M3.
+- `Compare_AI_kk.mdl`: comparison model for M1, M2, and M3.
 - `Net_improve_init.m`: converter and simulation parameter initialization.
 - `phnode_weights_3_8.mat`: trained pH-NODE weights used by the Simulink neural converter.
 - `Export_result_plot.m`: exports Simulink `out` variables to `.mat` files for plotting.
@@ -203,9 +201,3 @@ training/results/
 
 This folder is intended for local inference outputs and may be empty in a fresh checkout.
 
-## Notes
-
-- `model/kan.py` from the original training folder is not included because the released experiments use the MLP backbone.
-- The uploaded processed dataset is generated from the IGBT/Diode detailed model. Switching-function preprocessing is supported by the code but is not the default dataset used for the paper training results.
-- The complete raw trajectory dataset can be very large; regenerate it with `simulink/data_generation/` if it is not present locally.
-- Simulink cache/build folders such as `slprj/` are ignored, while selected model/cache files required by the workflows are retained.
