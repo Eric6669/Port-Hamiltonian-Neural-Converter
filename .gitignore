@@ -9,17 +9,12 @@ venv/
 .idea/
 .vscode/
 
-# Generated training data and outputs
+# Large generated raw data and local outputs
 training/datasets/raw/*
 !training/datasets/raw/.gitkeep
-training/datasets/processed/*
-!training/datasets/processed/.gitkeep
 training/results/*
 !training/results/.gitkeep
-training/plots/**/Y_*.mat
-training/plots/**/*.svg
 *.db
-optuna.db
 
 # MATLAB/Simulink generated files
 slprj/
