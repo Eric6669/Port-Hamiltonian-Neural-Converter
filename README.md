@@ -84,12 +84,12 @@ This repository provides the implementation of a **physics-priori neural convert
 The full pipeline from data generation to real-time validation is illustrated below. Each step is detailed in the sections that follow.
 
 ```text
- ┌──────────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
- │ Data Generation  │───▶│Preprocessing│───▶│   Training   │───▶│  Inference   │
- │   (Simulink)     │    │  (Python)   │    │   (Python)   │    │   (Python)   │
- └──────────────────┘    └─────────────┘    └──────────────┘    └──────┬───────┘
-                                                                       │
-                                              ┌────────────────────────┘
+ ┌──────────────────┐     ┌───────────────┐     ┌──────────────┐     ┌─────────────┐
+ │  Data Generation │─────│ Preprocessing │─────│   Training   │─────│  Inference  │
+ │    (Simulink)    │     │   (Python)    │     │   (Python)   │     │   (Python)  │
+ └──────────────────┘     └───────────────┘     └──────────────┘     └──────┬──────┘
+                                                                            │
+                                              ┌─────────────────────────────┘
                                               ▼
                                    ┌────────────────────┐
                                    │ Export to Simulink │
@@ -98,10 +98,10 @@ The full pipeline from data generation to real-time validation is illustrated be
                                              │
                               ┌──────────────┴──────────────┐
                               ▼                             ▼
-                    ┌──────────────────┐           ┌───────────────────┐
-                    │Offline Validation│           │  HIL / Real-Time  │
-                    │    (Simulink)    │           │    (OPAL-RT)      │
-                    └──────────────────┘           └───────────────────┘
+                   ┌────────────────────┐         ┌───────────────────┐
+                   │ Offline Validation │         │  HIL / Real-Time  │
+                   │    (Simulink)      │         │    (OPAL-RT)      │
+                   └────────────────────┘         └───────────────────┘
 ```
 
 ### Step 1 — Data Generation (Simulink)
