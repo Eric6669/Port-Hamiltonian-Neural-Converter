@@ -13,9 +13,9 @@
 ## Abstract
 
 <p align="center">
-  <img src="https://img.shields.io/badge/EMT_Simulation-yes-blue" alt="EMT Simulation">
-  <img src="https://img.shields.io/badge/Port_Hamiltonian_Modeling-yes-orange" alt="Port-Hamiltonian Modeling">
-  <img src="https://img.shields.io/badge/Neural_Converter-yes-critical" alt="Neural Converter">
+  <img src="https://img.shields.io/badge/EMT_Simulation-✓-blue" alt="EMT Simulation">
+  <img src="https://img.shields.io/badge/Port_Hamiltonian_Modeling-✓-orange" alt="Port-Hamiltonian Modeling">
+  <img src="https://img.shields.io/badge/Neural_Converter-✓-critical" alt="Neural Converter">
 </p>
 
 <p align="center">
