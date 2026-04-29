@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-"""Plot HIL real-time simulation comparison results."""
+"""Plot real-time simulation comparison results."""
 
 import os
 import numpy as np
@@ -43,7 +43,7 @@ def calculate_nrmse(y_true, y_pred):
     return (rmse / y_range) * 100.0
 
 
-def plot_three_curves(t, y_true_all, y_ai_all, y_swf_all, var_key, save_path):
+def plot_three_curves(t, y_true_all, y_ai_all, y_swf_all, var_key, save_path, zoom_x_range, inset_pos):
     """Plot IGBT, neural converter, and switching-function traces."""
     info = VAR_INFO[var_key]
     col = info['col']
@@ -58,9 +58,9 @@ def plot_three_curves(t, y_true_all, y_ai_all, y_swf_all, var_key, save_path):
     color_err_axis = '#8b4513'
 
     fig, ax = plt.subplots(figsize=(14, 3.5))
-    ax.plot(t, y_true, color=color_true, linewidth=1.5, alpha=0.9, label='Ground Truth')
-    ax.plot(t, y_ai, color=color_ai, linewidth=1.2, alpha=0.9, linestyle='--', label='Neural Converter')
-    ax.plot(t, y_swf, color=color_swf, linewidth=1.2, alpha=0.8, linestyle='-.', label='Switching Function')
+    ax.plot(t, y_true, color=color_true, linewidth=1.5, alpha=0.9, label='DUB')
+    ax.plot(t, y_ai, color=color_ai, linewidth=1.2, alpha=0.9, linestyle='--', label='pH-NODE')
+    ax.plot(t, y_swf, color=color_swf, linewidth=1.2, alpha=0.8, linestyle='-.', label='SWF')
 
     ax.set_ylabel(f"{info['label']} ({info['unit']})", fontsize=24, labelpad=5)
     ax.tick_params(axis='both', which='major', labelsize=22)
@@ -80,6 +80,40 @@ def plot_three_curves(t, y_true_all, y_ai_all, y_swf_all, var_key, save_path):
 
     max_err = max(np.max(err_ai), np.max(err_swf), 1e-6)
     ax2.set_ylim(0, max_err * 3.5)
+
+    ax.set_zorder(ax2.get_zorder() + 1)
+    ax.patch.set_visible(False)
+    if zoom_x_range is not None:
+        axins = ax.inset_axes(inset_pos)
+        axins.set_facecolor('white')
+        axins.patch.set_alpha(0.95)
+
+        axins.plot(t, y_true, color=color_true, linewidth=1.5, alpha=0.9)
+        axins.plot(t, y_ai, color=color_ai, linewidth=1.2, alpha=0.9, linestyle='--')
+        axins.plot(t, y_swf, color=color_swf, linewidth=1.2, alpha=0.8, linestyle='-.')
+
+        z_x1, z_x2 = zoom_x_range
+        idx1 = np.searchsorted(t, z_x1)
+        idx2 = np.searchsorted(t, z_x2)
+
+        if idx2 > idx1:
+            window_true = y_true[idx1:idx2]
+            window_ai = y_ai[idx1:idx2]
+            window_swf = y_swf[idx1:idx2]
+
+            z_y1 = min(np.min(window_true), np.min(window_ai), np.min(window_swf))
+            z_y2 = max(np.max(window_true), np.max(window_ai), np.max(window_swf))
+
+            margin = (z_y2 - z_y1) * 0.1 if z_y2 != z_y1 else 1e-3
+            y_lower = z_y1 - margin
+            y_upper = z_y2 + margin
+            axins.set_xlim(z_x1, z_x2)
+            axins.set_ylim(y_lower, y_upper)
+
+            axins.tick_params(axis='both', which='major', labelsize=14)
+            axins.grid(True, alpha=0.3)
+
+            ax.indicate_inset_zoom(axins, edgecolor="black", alpha=0.8, linewidth=1.5)
 
     ax.set_xlabel('Time (s)', fontsize=24)
     plt.tight_layout()
@@ -140,6 +174,7 @@ if __name__ == '__main__':
     print("\nGenerating plots...")
     for var in target_vars:
         save_name = os.path.join(data_folder, f'Result_HIL_{var}_Comparison.svg')
-        plot_three_curves(t_plot, Y_true, Y_pred, Y_swf, var_key=var, save_path=save_name)
-
+        plot_three_curves(t_plot, Y_true, Y_pred, Y_swf, var_key=var, save_path=save_name,
+                          zoom_x_range=[1.45, 1.55],
+                          inset_pos=[0.30, 0.45, 0.4, 0.45])
     print("All tasks completed.")
