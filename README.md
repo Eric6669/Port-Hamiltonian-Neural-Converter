@@ -190,7 +190,7 @@ Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink
 2. Run `Export_result_plot.m` to save `Y_IGBT.mat`, `Y_pred.mat`, `Y_SWF.mat`.
 3. Run `Compare_error.m` to compute error metrics against M1.
 
-### Step 6 — Real-Time RT Validation (OPAL-RT)
+### Step 6 — Real-Time Validation (OPAL-RT)
 
 Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-loop testing.
 
