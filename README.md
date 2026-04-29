@@ -123,7 +123,7 @@ cd training
 python datasets/preprocess.py --converter_model IGBT --normalization 0
 ```
 
-The released processed data are based on the **IGBT/Diode detailed model (M1)**. Use `--converter_model Switching` only if you intentionally want to build a switching-function surrogate model.
+The released processed data are based on the **IGBT/Diode detailed model**. Use `--converter_model Switching` only if you intentionally want to build a switching-function surrogate model.
 
 ### Step 3 — Train and Inference
 
@@ -161,10 +161,10 @@ simulink/realtime/phnode_weights_3_8.mat
 
 ### Step 5 — Offline Validation (Simulink)
 
-Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink.
+Compare models under open-loop and closed-loop scenarios inside Simulink.
 
 **Files:**
-- `simulink/offline/Compare_AI_kk.mdl` — comparison model for M1, M2, and M3.
+- `simulink/offline/Compare_AI_kk.mdl` — comparison models.
 - `simulink/offline/Net_improve_init.m` — converter and simulation parameter initialization.
 - `simulink/offline/Export_result_plot.m` — exports Simulink variables to `.mat` for plotting.
 - `simulink/offline/Compare_error.m` — computes RMSE, MAE, NRMSE, and relative RMSE.
@@ -173,16 +173,16 @@ Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink
 
 1. Open `Compare_AI_kk.mdl` and run the desired scenario.
 2. Run `Export_result_plot.m` to save `Y_IGBT.mat`, `Y_pred.mat`, `Y_SWF.mat`.
-3. Run `Compare_error.m` to compute error metrics against M1.
+3. Run `Compare_error.m` to compute error metrics against DUB.
 
 ### Step 6 — Real-Time Validation (OPAL-RT)
 
-Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-loop testing.
+Deploy models on the OP4610XG real-time simulator for hardware-in-the-loop testing.
 
 **Files:**
-- `simulink/realtime/RT_IGBT.slx` — M1 detailed IGBT/Diode model.
-- `simulink/realtime/RT_SWF.slx` — M2 switching-function model.
-- `simulink/realtime/RT_AI.slx` — M3 pH-NODE neural converter.
+- `simulink/realtime/RT_IGBT.slx` — detailed IGBT/Diode model.
+- `simulink/realtime/RT_SWF.slx` — switching-function model.
+- `simulink/realtime/RT_AI.slx` — pH-NODE neural converter.
 - `simulink/realtime/Net_improve_init.m` and `phnode_weights_3_8.mat` — initialization and weights.
 
 ## Performance Validation Results
