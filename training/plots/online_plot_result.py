@@ -173,7 +173,7 @@ if __name__ == '__main__':
 
     print("\nGenerating plots...")
     for var in target_vars:
-        save_name = os.path.join(data_folder, f'Result_HIL_{var}_Comparison.svg')
+        save_name = os.path.join(data_folder, f'Result_RT_{var}_Comparison.svg')
         plot_three_curves(t_plot, Y_true, Y_pred, Y_swf, var_key=var, save_path=save_name,
                           zoom_x_range=[1.45, 1.55],
                           inset_pos=[0.30, 0.45, 0.4, 0.45])

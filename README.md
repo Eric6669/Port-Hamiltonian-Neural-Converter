@@ -58,7 +58,7 @@ This repository provides the implementation of a **physics-priori neural convert
 ├── simulink/
 │   ├── data_generation/        # Parallel Simulink data-generation model and script
 │   ├── offline/                # Offline comparison models
-│   └── realtime/               # HIL real-time models for OP4610XG
+│   └── realtime/               # RT real-time models for OP4610XG
 │
 ├── training/
 │   ├── datasets/
@@ -99,7 +99,7 @@ The full pipeline from data generation to real-time validation is illustrated be
                               ┌──────────────┴──────────────┐
                               ▼                             ▼
                    ┌────────────────────┐         ┌───────────────────┐
-                   │ Offline Validation │         │  HIL / Real-Time  │
+                   │ Offline Validation │         │  RT / Real-Time  │
                    │    (Simulink)      │         │    (OPAL-RT)      │
                    └────────────────────┘         └───────────────────┘
 ```
@@ -190,7 +190,7 @@ Compare M1, M2, and M3 under open-loop and closed-loop scenarios inside Simulink
 2. Run `Export_result_plot.m` to save `Y_IGBT.mat`, `Y_pred.mat`, `Y_SWF.mat`.
 3. Run `Compare_error.m` to compute error metrics against M1.
 
-### Step 6 — Real-Time HIL Validation (OPAL-RT)
+### Step 6 — Real-Time RT Validation (OPAL-RT)
 
 Deploy M1, M2, and M3 on the OP4610XG real-time simulator for hardware-in-the-loop testing.
 
@@ -208,9 +208,9 @@ The repository includes exported result data and figures for the paper's three v
 |------|-----------|
 | Open-loop (ac sag + dc step) | `training/plots/open_1.0s_ac_1.0_0.8_2.0s_dc_3000_2800/` |
 | Closed-loop (power step + dc step) | `training/plots/close_1.0s_p_0.8_0.6_2.0s_dc_3000_2800/` |
-| HIL (dc step + power step) | `training/plots/HIL_1.0s_dc_3000_3200_2.0s_p_0.8_0.6/` |
+| RT (dc step + power step) | `training/plots/RT_1.0s_dc_3000_3200_2.0s_p_0.8_0.6/` |
 
-Each directory contains the exported `.mat` files and SVG comparison figures. The HIL directory additionally includes raw OPAL-RT exports and `from_HIL_to_py.m` for format conversion.
+Each directory contains the exported `.mat` files and SVG comparison figures. The RT directory additionally includes raw OPAL-RT exports and `from_RT_to_py.m` for format conversion.
 
 ## Citation
 

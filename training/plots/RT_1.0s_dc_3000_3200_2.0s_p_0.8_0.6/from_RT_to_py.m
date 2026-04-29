@@ -1,5 +1,5 @@
 clear;clc;
-filename = 'HIL_swf_20.mat'; % 'HIL_ai_20.mat', 'HIL_ai_40.mat', 'HIL_swf_20.mat', 'HIL_swf_40.mat', 'HIL_IGBT_20.mat', 'HIL_IGBT_40.mat'
+filename = 'RT_swf_20.mat'; % 'RT_ai_20.mat', 'RT_ai_40.mat', 'RT_swf_20.mat', 'RT_swf_40.mat', 'RT_IGBT_20.mat', 'RT_IGBT_40.mat'
 
 S = load(filename);
 
