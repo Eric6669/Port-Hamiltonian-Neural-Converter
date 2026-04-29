@@ -33,11 +33,11 @@ This repository provides the implementation of a **physics-priori neural convert
 - **Offline and online validation** against detailed IGBT/Diode and switching-function models.
 - **Reproducible code and models** for converter models:
 
-| Label | Model | Role                  |
-|-------|-------|-----------------------|
-| **M1** | IGBT/Diode detailed model | Ground truth          |
-| **M2** | Switching-function model | Real-time comparision |
-| **M3** | pH-NODE neural converter (ours) | Proposed              |
+| Label       | Model                          | Role                  |
+|-------------|--------------------------------|-----------------------|
+| **DUB**     | Detailed IGBT/Diode model      | Ground truth          |
+| **SWF**     | Switching-function model       | Real-time comparision |
+| **pH-NODE** | pH-NODE neural converter | Proposed              |
 
 ## Environment
 
@@ -139,18 +139,18 @@ python main.py converter_model IGBT converter_neural_model ConverterPHNN \
 
 Key hyperparameters (from the paper):
 
-| Hyperparameter | Value |
-|----------------|-------|
+| Hyperparameter | Value            |
+|----------------|------------------|
 | MLP architecture | [11, 8, 8, 8, 5] |
-| ODE solver | Euler |
-| Optimizer | AdamW |
-| Loss | MSE|
-| Batch size | 512 |
-| Learning rate | 3.33e-3 |
-| LR decay factor | 0.5 |
-| Weight decay | 9.83e-4 |
-| Warmup steps | 9 |
-| Epochs | 30 |
+| ODE solver | Euler            |
+| Optimizer | AdamW            |
+| Loss | MSE              |
+| Batch size | 512              |
+| Learning rate | 3.33e-3          |
+| LR decay factor | 0.5              |
+| Weight decay | 9.83e-4          |
+| Warmup steps | 9                |
+| Epochs | 50               |
 
 The trained checkpoint is saved to:
 
