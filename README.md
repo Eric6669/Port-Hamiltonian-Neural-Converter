@@ -137,21 +137,6 @@ python main.py converter_model IGBT converter_neural_model ConverterPHNN \
     --R_type NonlinearDiag2 --Pinv_type nominal --arch mlp --integrate_method euler
 ```
 
-Key hyperparameters (from the paper):
-
-| Hyperparameter | Value            |
-|----------------|------------------|
-| MLP architecture | [11, 8, 8, 8, 5] |
-| ODE solver | Euler            |
-| Optimizer | AdamW            |
-| Loss | MSE              |
-| Batch size | 512              |
-| Learning rate | 3.33e-3          |
-| LR decay factor | 0.5              |
-| Weight decay | 9.83e-4          |
-| Warmup steps | 9                |
-| Epochs | 50               |
-
 The trained checkpoint is saved to:
 
 ```text
