@@ -123,7 +123,7 @@ def plot_three_curves(t, y_true_all, y_ai_all, y_swf_all, var_key, save_path, zo
 
 
 if __name__ == '__main__':
-    data_folder = 'HIL_1.0s_dc_3000_3200_2.0s_p_0.8_0.6'
+    data_folder = 'RT_1.0s_dc_3000_3200_2.0s_p_0.8_0.6'
 
     print("Load .mat...")
     path_true = os.path.join(data_folder, 'Y_IGBT_40.mat')
