@@ -34,7 +34,7 @@ VAR_INFO = {
 }
 
 
-def plot_selected_variables(t, Y_true, Y_comp, vars_to_plot, save_path, comp_label='Pred'):
+def plot_selected_variables(t, Y_true, Y_comp, vars_to_plot, save_path, comp_label, zoom_x_range, inset_pos):
     """Plot selected channels and their absolute-error envelopes."""
     num_vars = len(vars_to_plot)
     if num_vars == 0:
@@ -57,7 +57,7 @@ def plot_selected_variables(t, Y_true, Y_comp, vars_to_plot, save_path, comp_lab
         y_true_val = Y_true[:, col]
         y_comp_val = Y_comp[:, col]
 
-        ax.plot(t, y_true_val, color=color_true, linewidth=1.5, alpha=0.9, label='Ground Truth')
+        ax.plot(t, y_true_val, color=color_true, linewidth=1.5, alpha=0.9, label='DUB')
         ax.plot(t, y_comp_val, color=color_pred, linewidth=1.2, alpha=0.8, linestyle='--', label=comp_label)
 
         ax.set_ylabel(f"{info['label']} ({info['unit']})", fontsize=24, labelpad=0)
@@ -79,6 +79,36 @@ def plot_selected_variables(t, Y_true, Y_comp, vars_to_plot, save_path, comp_lab
             max_err = 1e-6
         ax2.set_ylim(0, max_err * 3)
 
+        ax.set_zorder(ax2.get_zorder() + 1)
+        ax.patch.set_visible(False)
+        if zoom_x_range is not None:
+
+            axins = ax.inset_axes(inset_pos)
+            axins.set_facecolor('white')
+            axins.patch.set_alpha(0.95)
+
+            axins.plot(t, y_true_val, color=color_true, linewidth=1.5, alpha=0.9)
+            axins.plot(t, y_comp_val, color=color_pred, linewidth=1.2, alpha=0.8, linestyle='--')
+
+            z_x1, z_x2 = zoom_x_range
+            idx1 = np.searchsorted(t, z_x1)
+            idx2 = np.searchsorted(t, z_x2)
+
+            if idx2 > idx1:
+                window_true = y_true_val[idx1:idx2]
+                window_comp = y_comp_val[idx1:idx2]
+                z_y1 = min(np.min(window_true), np.min(window_comp))
+                z_y2 = max(np.max(window_true), np.max(window_comp))
+
+                margin = (z_y2 - z_y1) * 0.1 if z_y2 != z_y1 else 1e-3
+                axins.set_xlim(z_x1, z_x2)
+                axins.set_ylim(z_y1 - margin, z_y2 + margin)
+
+                axins.tick_params(axis='both', which='major', labelsize=14)
+                axins.grid(True, alpha=0.3)
+
+                ax.indicate_inset_zoom(axins, edgecolor="black", alpha=0.8, linewidth=1.5)
+
     axes[-1].set_xlabel('Time (s)', fontsize=24)
     plt.tight_layout()
     plt.savefig(save_path, bbox_inches='tight', format='svg')
@@ -87,6 +117,7 @@ def plot_selected_variables(t, Y_true, Y_comp, vars_to_plot, save_path, comp_lab
 
 
 if __name__ == '__main__':
+    # data_folder = 'open_1.0s_ac_1.0_0.8_2.0s_dc_3000_2800'
     data_folder = 'close_1.0s_p_0.8_0.6_2.0s_dc_3000_2800'
 
     print("Load .mat...")
@@ -113,4 +144,7 @@ if __name__ == '__main__':
     single_vars = ['vcp', 'vcn', 'p', 'q', 'vdc', 'ia', 'ib', 'ic']
     for var in single_vars:
         save_name = os.path.join(data_folder, f'Result_{var}_IGBTvPred.svg')
-        plot_selected_variables(t - 0.5, Y_true, Y_pred, [var], save_name, comp_label='Neural Converter')
+        plot_selected_variables(t - 0.5, Y_true, Y_pred, [var], save_name, comp_label='pH-NODE',
+                                zoom_x_range=[1.45, 1.55],  # [1.45, 1.55]
+                                inset_pos=[0.20, 0.15, 0.4, 0.45])  # [0.25, 0.15, 0.4, 0.45]
+                                # [left bound, low bound, width, height] percentage
