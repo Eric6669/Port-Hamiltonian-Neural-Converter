@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-"""Utilities for the port-Hamiltonian neural converter project."""
+"""
+@Project ：PaperCode-Neural-Converters-for-AI-EMT-Simulation 
+@File    ：inference.py
+@Author  ：He Xing
+@Date    ：2026/4/6 13:36 
+"""
 
 import os
 import argparse
@@ -11,8 +16,12 @@ import torch
 import matplotlib.font_manager as fm
 import matplotlib
 import matplotlib.pyplot as plt
-from model.NODE import ConverterNODE
-from model.pHNN import ConverterPHNN
+
+from model.pHNODE import pHNODE
+from model.NODE import NODE
+from model.PINODE import PINODE
+from model.LSTM import LSTM
+
 from utils.integrator import rk4_integrate, euler_integrate
 
 font_path = os.path.join(os.getcwd(), 'times.ttf')
@@ -24,16 +33,84 @@ else:
     print(f"Error: Font file not found at {font_path}. Using default.")
     plt.rcParams['font.family'] = 'serif'
 
-def load_raw_trajectory(mat_path, converter_model="Switching", t_start_idx=0):
+COLUMN_LAYOUT = {
+    "2level": {
+        "offset": 21,
+        "z": (0, 5),
+        "u_ext": (5, 10),
+        "u_sw": (13, 19),
+    },
+    "3level": {
+        "offset": 0,
+        "z": (0, 5),
+        "u_ext": (5, 10),
+        "u_sw": (13, 25),
+    },
+}
 
-    offset = 0 if converter_model == "Switching" else 21
+ODE_MODEL_NAMES = ["pHNODE", "NODE", "PINODE"]
+SEQ_MODEL_NAMES = ["LSTM"]
+
+
+def build_model(args):
+    if args.converter_neural_model == "pHNODE":
+        return pHNODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+        )
+
+    elif args.converter_neural_model == "NODE":
+        return NODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+        )
+
+    elif args.converter_neural_model == "PINODE":
+        return PINODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+            physics_weight=getattr(args, "physics_weight", 0.5),
+        )
+
+    elif args.converter_neural_model == "LSTM":
+        return LSTM(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.layers,
+            dropout=getattr(args, "lstm_dropout", 0.0),
+        )
+
+    else:
+        raise ValueError(f"Unknown model: {args.converter_neural_model}")
+
+def get_data_tag(args):
+    if getattr(args, "normalization", 0) == 1:
+        return f"{args.converter_model}_norm"
+    return args.converter_model
+
+def load_raw_trajectory(mat_path, converter_model, t_start_idx=0):
+
+    if converter_model not in COLUMN_LAYOUT:
+        raise ValueError(f"Unknown converter_model: {converter_model}")
+
+    layout = COLUMN_LAYOUT[converter_model]
+    off = layout["offset"]
+
     mat_data = sio.loadmat(mat_path)
     data = mat_data["clean_data"]
 
-    z = data[t_start_idx:, offset + 0: offset + 5]
+    z_start, z_end = layout["z"]
+    u_start, u_end = layout["u_ext"]
+    sw_start, sw_end = layout["u_sw"]
+
+    z = data[t_start_idx:, off + z_start: off + z_end].copy()
     z[:, 2:5] = -z[:, 2:5]
-    u_ext = data[t_start_idx:, offset + 5: offset + 10]
-    u_sw = data[t_start_idx:, offset + 13: offset + 19]
+
+    u_ext = data[t_start_idx:, off + u_start: off + u_end]
+    u_sw = data[t_start_idx:, off + sw_start: off + sw_end]
 
     return z, u_ext, u_sw
 
@@ -65,7 +142,43 @@ def rollout(model, z0, u_seq, sw_seq, dt, chunk_size=10, integrate_fn=rk4_integr
     return torch.cat(all_preds, dim=0).numpy()  # (T-1, 5)
 
 
-def plot_trajectories(t, z_true, z_pred, save_path, dt):
+@torch.no_grad()
+def rollout_lstm(model, z0, u_seq, sw_seq):
+    """
+    Autoregressive LSTM rollout:
+        z_{k+1} = LSTM(z_k, u_k, s_k, h_k)
+
+    Inputs:
+        z0     : (1, 5)
+        u_seq  : (1, T, 5)
+        sw_seq : (1, T, sw_dim)
+
+    Returns:
+        z_pred : (T-1, 5), predicted z_1 ... z_{T-1}
+    """
+    device = next(model.parameters()).device
+
+    z = z0.to(device)
+    u_seq = u_seq.to(device)
+    sw_seq = sw_seq.to(device)
+
+    hidden = None
+    preds = []
+
+    T = u_seq.shape[1]
+
+    for k in range(T - 1):
+        u_k = u_seq[:, k, :]
+        sw_k = sw_seq[:, k, :]
+
+        z_next, hidden = model(z, u_k, sw_k, hidden)
+        preds.append(z_next.squeeze(0).cpu())
+
+        z = z_next
+
+    return torch.stack(preds, dim=0).numpy()
+
+def plot_trajectories(t, z_true, z_pred, save_path, dt, start_offset=1):
     channel_names = [
         r'$v_{cp}$ (V)', r'$v_{cn}$ (V)',
         r'$i_a$ (A)', r'$i_b$ (A)', r'$i_c$ (A)'
@@ -79,15 +192,15 @@ def plot_trajectories(t, z_true, z_pred, save_path, dt):
     fig, axes = plt.subplots(5, 1, figsize=(14, 12), sharex=True)
 
     T_pred = z_pred.shape[0]
-    t_pred = t[1:T_pred + 1]
+    t_pred = t[start_offset:start_offset + T_pred]
 
-    z_true_aligned = z_true[1:T_pred + 1]
+    z_true_aligned = z_true[start_offset:start_offset + T_pred]
 
     for i, ax in enumerate(axes):
-        ax.plot(t[:T_pred + 1], z_true[:T_pred + 1, i],
+        ax.plot(t_pred, z_true_aligned[:, i],
                 color=color_true, linewidth=1.5, alpha=0.9, label='Ground Truth')
         ax.plot(t_pred, z_pred[:, i],
-                color=color_pred, linewidth=1.2, alpha=0.8, linestyle='--', label='NODE')
+                color=color_pred, linewidth=1.2, alpha=0.8, linestyle='--', label='Prediction')
 
         ax.set_ylabel(channel_names[i], fontsize=16)
         ax.tick_params(axis='both', which='major', labelsize=16)
@@ -118,10 +231,10 @@ def plot_trajectories(t, z_true, z_pred, save_path, dt):
     print(f"[SAVE] {save_path}")
 
 
-def compute_errors(z_true, z_pred):
+def compute_errors(z_true, z_pred, start_offset=1):
 
     T = z_pred.shape[0]
-    z_t = z_true[1:T + 1]
+    z_t = z_true[start_offset:start_offset + T]
 
     channel_names = ['vcp', 'vcn', 'ia', 'ib', 'ic']
 
@@ -148,8 +261,8 @@ class Inference:
 
         self.args = args
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.data_dir = os.path.join('datasets', 'raw')
-        self.save_dir = os.path.join('results', self.args.converter_model)
+        self.data_dir = os.path.join("datasets", self.args.converter_model, "raw")
+        self.save_dir = os.path.join("results", self.args.converter_model)
         self.dt = args.Ts
 
     def run(self):
@@ -162,7 +275,15 @@ class Inference:
         T = z_raw.shape[0]
         t = np.arange(T) * self.dt
 
-        meta_path = os.path.join('datasets', 'processed', f'{self.args.converter_model}_meta.pt')
+        data_tag = get_data_tag(self.args)
+
+        meta_path = os.path.join(
+            "datasets",
+            self.args.converter_model,
+            "processed",
+            f"{data_tag}_meta.pt"
+        )
+
         meta = torch.load(meta_path, weights_only=False)
         scalers = meta.get("scalers", None)
 
@@ -177,25 +298,11 @@ class Inference:
         # ---------------------------------------------------
         # 2. Load Model
         # ---------------------------------------------------
-        if self.args.converter_neural_model == "ConverterPHNN":
-            model = ConverterPHNN(
-                hidden_dim=self.args.hidden_dim,
-                depth=self.args.layers,
-                R=self.args.R_type,
-                Pinv=self.args.Pinv_type,
-                arch=self.args.arch,
-            ).to(self.device)
-        elif self.args.converter_neural_model == "ConverterNODE":
-            model = ConverterNODE(
-                hidden_dim=self.args.hidden_dim,
-                depth=self.args.layers
-            ).to(self.device)
-        else:
-            raise ValueError(f"Unknown model: {self.args.converter_neural_model}")
+        model = build_model(self.args).to(self.device)
 
         ckpt_path = os.path.join(
-            'checkpoints',
-            f"{self.args.converter_model}_{self.args.converter_neural_model}_R{self.args.R_type}_Pinv{self.args.Pinv_type}_arch{self.args.arch}.pt"
+            "checkpoints",
+            f"{self.args.converter_model}_{self.args.converter_neural_model}.pt"
         )
 
         model.load_state_dict(torch.load(ckpt_path, map_location='cpu', weights_only=True))
@@ -214,13 +321,31 @@ class Inference:
 
         z_tensor = torch.from_numpy(z_norm.astype(np.float32)).unsqueeze(0)  # (1, T, 5)
         u_tensor = torch.from_numpy(u_norm.astype(np.float32)).unsqueeze(0)  # (1, T, 5)
-        sw_tensor = torch.from_numpy(sw_raw.astype(np.float32)).unsqueeze(0)  # (1, T, 6)
-        z0 = z_tensor[:, 0, :]
+        sw_tensor = torch.from_numpy(sw_raw.astype(np.float32)).unsqueeze(0)  # (1, T, 6/12)
 
         t0 = time.time()
-        z_pred_norm = rollout(model, z0, u_tensor, sw_tensor, self.dt,
-                              chunk_size=self.args.chunk_size,
-                              integrate_fn=integrate_fn)
+
+        if self.args.converter_neural_model in ODE_MODEL_NAMES:
+            z0 = z_tensor[:, 0, :]
+
+            z_pred_norm = rollout(
+                model, z0, u_tensor, sw_tensor, self.dt,
+                chunk_size=self.args.chunk_size,
+                integrate_fn=integrate_fn
+            )
+            start_offset = 1
+
+
+        elif self.args.converter_neural_model in SEQ_MODEL_NAMES:
+            z0 = z_tensor[:, 0, :]
+            z_pred_norm = rollout_lstm(
+                model, z0, u_tensor, sw_tensor
+            )
+            start_offset = 1
+
+        else:
+            raise ValueError(f"Unknown model: {self.args.converter_neural_model}")
+
         elapsed = time.time() - t0
         print(f"  Done in {elapsed:.1f}s ({T / elapsed:.0f} steps/s)")
 
@@ -229,7 +354,7 @@ class Inference:
         else:
             z_pred_raw = z_pred_norm
 
-        compute_errors(z_raw, z_pred_raw)
+        compute_errors(z_raw, z_pred_raw, start_offset=start_offset)
 
         # ---------------------------------------------------
         # 4. Plot trajectories
@@ -237,5 +362,11 @@ class Inference:
 
         os.makedirs(self.save_dir, exist_ok=True)
         mat_name = os.path.splitext(self.args.infer_file)[0]
-        save_path = os.path.join(self.save_dir, f"{mat_name}_R{self.args.R_type}_Pinv{self.args.Pinv_type}.svg")
-        plot_trajectories(t, z_raw, z_pred_raw, save_path, self.dt)
+        save_path = os.path.join(
+            self.save_dir,
+            f"{mat_name}_{self.args.converter_neural_model}.svg"
+        )
+        plot_trajectories(
+            t, z_raw, z_pred_raw, save_path, self.dt,
+            start_offset=start_offset
+        )
