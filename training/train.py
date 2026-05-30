@@ -1,19 +1,89 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-"""Utilities for the port-Hamiltonian neural converter project."""
+"""
+@Project ：PaperCode-Neural-Converters-for-AI-EMT-Simulation 
+@File    ：train.py
+@Author  ：He Xing
+@Date    ：2026/4/2 21:18 
+"""
 
 import os
 import math
 import time
 import torch
 import numpy as np
-from model.pHNN import ConverterPHNN
-from model.NODE import ConverterNODE
+
+from model.pHNODE import pHNODE
+from model.NODE import NODE
+from model.PINODE import PINODE
+from model.LSTM import LSTM
+
 from utils.integrator import rk4_integrate, euler_integrate
 from datasets.preprocess import TrajectorySliceDataset
-from utils.utils import normalized_mse, normalized_mae, plot_loss_curves
+from utils.utils import plot_loss_curves
 from torch.utils.data import DataLoader, random_split
 
+
+ODE_MODEL_NAMES = ["pHNODE", "NODE", "PINODE"]
+SEQ_MODEL_NAMES = ["LSTM"]
+
+
+def build_model(args):
+    if args.converter_neural_model == "pHNODE":
+        return pHNODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+        )
+
+    elif args.converter_neural_model == "NODE":
+        return NODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+        )
+
+    elif args.converter_neural_model == "PINODE":
+        return PINODE(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            depth=args.layers,
+            physics_weight=args.physics_weight,
+        )
+
+    elif args.converter_neural_model == "LSTM":
+        return LSTM(
+            converter_model=args.converter_model,
+            hidden_dim=args.hidden_dim,
+            num_layers=args.layers,
+            dropout=args.lstm_dropout,
+        )
+
+    else:
+        raise ValueError(f"Unknown model: {args.converter_neural_model}")
+
+
+def get_data_tag(args):
+    if getattr(args, "normalization", 0) == 1:
+        return f"{args.converter_model}_norm"
+    return args.converter_model
+
+
+def compute_state_loss(model, z_pred, z_target, args, criterion):
+    if args.converter_neural_model == "PINODE":
+        loss, loss_dict = model.total_loss(
+            z_pred=z_pred,
+            z_target=z_target,
+            loss_weight_v=args.loss_weight_v,
+            loss_weight_i=args.loss_weight_i,
+            physics_weight=args.physics_weight,
+        )
+        return loss
+
+    loss_v = criterion(z_pred[:, :, 0:2], z_target[:, :, 0:2])
+    loss_i = criterion(z_pred[:, :, 2:5], z_target[:, :, 2:5])
+    loss = args.loss_weight_v * loss_v + args.loss_weight_i * loss_i
+    return loss
 
 def train(args):
     # ---------------------------------------------------
@@ -31,10 +101,16 @@ def train(args):
     # 2. Data Loading
     # ---------------------------------------------------
     project_dir = os.getcwd()
-    data_path = os.path.join(project_dir, 'datasets', 'processed',
-                             f'{args.converter_model}_trajectories.pt')
-    meta_path = os.path.join(project_dir, 'datasets', 'processed',
-                             f'{args.converter_model}_meta.pt')
+    data_tag = get_data_tag(args)
+
+    data_path = os.path.join(
+        project_dir, 'datasets', f'{args.converter_model}', 'processed',
+        f'{data_tag}_trajectories.pt'
+    )
+    meta_path = os.path.join(
+        project_dir, 'datasets', f'{args.converter_model}', 'processed',
+        f'{data_tag}_meta.pt'
+    )
 
     print(f"Loading: {data_path}")
     data = torch.load(data_path, weights_only=False)
@@ -46,7 +122,7 @@ def train(args):
 
     dt = meta["dt"]
     N_traj, T, _ = z_all.shape
-    print(f"  {N_traj} trajectories x {T} steps, dt={dt:.1e}s")
+    print(f"  {N_traj} trajectories × {T} steps, dt={dt:.1e}s")
 
     n_train = int(N_traj * args.dataset_split)
     n_val = N_traj - n_train
@@ -81,21 +157,7 @@ def train(args):
     # ---------------------------------------------------
     # 3. Model Initialization
     # ---------------------------------------------------
-    if args.converter_neural_model == "ConverterPHNN":
-        model = ConverterPHNN(
-            hidden_dim=args.hidden_dim,
-            depth=args.layers,
-            R=args.R_type,
-            Pinv=args.Pinv_type,
-            arch=args.arch,
-        ).to(device)
-    elif args.converter_neural_model == "ConverterNODE":
-        model = ConverterNODE(
-            hidden_dim=args.hidden_dim,
-            depth=args.layers
-        ).to(device)
-    else:
-        raise ValueError(f"Unknown model: {args.converter_neural_model}")
+    model = build_model(args).to(device)
 
     # ---------------------------------------------------
     # 4. Optimizer & Scheduler
@@ -132,8 +194,6 @@ def train(args):
 
     if args.loss_fn == "mse":
         criterion = torch.nn.MSELoss()
-    elif args.loss_fn == "normalized_mse":
-        criterion = normalized_mse
     else:
         raise ValueError(f"Unknown loss: {args.loss_fn}")
 
@@ -141,8 +201,7 @@ def train(args):
     os.makedirs(save_dir, exist_ok=True)
     save_path = os.path.join(
         save_dir,
-        f"{args.converter_model}_{args.converter_neural_model}_"
-        f"R{args.R_type}_Pinv{args.Pinv_type}_arch{args.arch}.pt"
+        f"{args.converter_model}_{args.converter_neural_model}.pt"
     )
 
     best_val_loss = float('inf')
@@ -168,24 +227,35 @@ def train(args):
             u_seg = u_seg.to(device)  # (B, L+1, 5)
             sw_seg = sw_seg.to(device)  # (B, L+1, 6)
 
-            z0 = z_seg[:, 0, :]  # (B, 5) IC
-            z_target = z_seg[:, 1:, :]  # (B, L, 5)
-
             optimizer.zero_grad(set_to_none=True)
 
-            z_pred = integrate_fn(
-                f_theta=model,
-                z0=z0,
-                u_seq=u_seg,
-                sw_seq=sw_seg,
-                dt=dt,
-                steps=args.seq_len,
-            )  # (B, L, 5)
+            if args.converter_neural_model in ODE_MODEL_NAMES:
+                z0 = z_seg[:, 0, :]
+                z_target = z_seg[:, 1:, :]
 
-            loss_v = criterion(z_pred[:, :, 0:2], z_target[:, :, 0:2])
-            loss_i = criterion(z_pred[:, :, 2:5], z_target[:, :, 2:5])
+                z_pred = integrate_fn(
+                    f_theta=model,
+                    z0=z0,
+                    u_seq=u_seg,
+                    sw_seq=sw_seg,
+                    dt=dt,
+                    steps=args.seq_len,
+                )
 
-            loss = args.loss_weight_v * loss_v + args.loss_weight_i * loss_i
+            elif args.converter_neural_model in SEQ_MODEL_NAMES:
+                # LSTM teacher forcing:
+                # [z, u_ext, u_sw]_{0:L-1} -> z_{1:L}
+                z_input = z_seg[:, :-1, :]
+                u_input = u_seg[:, :-1, :]
+                sw_input = sw_seg[:, :-1, :]
+                z_target = z_seg[:, 1:, :]
+
+                z_pred, _ = model(z_input, u_input, sw_input)
+
+            else:
+                raise ValueError(f"Unknown model: {args.converter_neural_model}")
+
+            loss = compute_state_loss(model, z_pred, z_target, args, criterion)
 
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=args.grad_clip)
@@ -216,17 +286,28 @@ def train(args):
                     u_seg = u_seg.to(device)
                     sw_seg = sw_seg.to(device)
 
-                    z0 = z_seg[:, 0, :]
-                    z_target = z_seg[:, 1:, :]
+                    if args.converter_neural_model in ODE_MODEL_NAMES:
+                        z0 = z_seg[:, 0, :]
+                        z_target = z_seg[:, 1:, :]
 
-                    z_pred = integrate_fn(
-                        model, z0, u_seg, sw_seg, dt, args.seq_len
+                        z_pred = integrate_fn(
+                            model, z0, u_seg, sw_seg, dt, args.seq_len
+                        )
+
+                    elif args.converter_neural_model in SEQ_MODEL_NAMES:
+                        z_input = z_seg[:, :-1, :]
+                        u_input = u_seg[:, :-1, :]
+                        sw_input = sw_seg[:, :-1, :]
+                        z_target = z_seg[:, 1:, :]
+
+                        z_pred, _ = model(z_input, u_input, sw_input)
+
+                    else:
+                        raise ValueError(f"Unknown model: {args.converter_neural_model}")
+
+                    val_loss_total = compute_state_loss(
+                        model, z_pred, z_target, args, criterion
                     )
-
-                    val_loss_v = criterion(z_pred[:, :, 0:2], z_target[:, :, 0:2])
-                    val_loss_i = criterion(z_pred[:, :, 2:5], z_target[:, :, 2:5])
-
-                    val_loss_total = args.loss_weight_v * val_loss_v + args.loss_weight_i * val_loss_i
 
                     val_loss_sum += val_loss_total.item()
                     val_batches += 1
@@ -249,7 +330,7 @@ def train(args):
             if avg_val < best_val_loss:
                 best_val_loss = avg_val
                 torch.save(model.state_dict(), save_path)
-                log += "  [Best]"
+                log += "  [★ Best]"
 
             print(log)
 
@@ -266,7 +347,7 @@ def train(args):
         val_losses=val_loss_history,
         val_epochs=val_epochs,
         save_dir=save_dir,
-        filename=f"{args.converter_model}_pHNODE_loss.png"
+        filename=f"{args.converter_model}_{args.converter_neural_model}_loss.png"
     )
 
     model.cpu()
