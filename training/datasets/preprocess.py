@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-"""Utilities for the port-Hamiltonian neural converter project."""
+"""
+@Project ：PaperCode-Neural-Converters-for-AI-EMT-Simulation 
+@File    ：preprocess.py
+@Author  ：He Xing
+@Date    ：2026/4/2 09:05 
+"""
 
 import os
 import argparse
@@ -18,13 +23,35 @@ from sklearn.preprocessing import StandardScaler, MaxAbsScaler
 #  [19:21] PQ    = [P, Q]
 # ===================================================================
 
-COL_Z_START = 0; COL_Z_END = 5
-COL_UEXT_START = 5; COL_UEXT_END = 10
-COL_VREF_START = 10; COL_VREF_END = 13
-COL_USW_START = 13; COL_USW_END = 19
-COL_PQ_START = 19; COL_PQ_END = 21
+COLUMN_LAYOUT = {
+    # 2-level: SWF-offset==0 IGBT-offset==21
+    "2level": {
+        "offset": 21,
+        "z": (0, 5),
+        "u_ext": (5, 10),
+        "vref": (10, 13),
+        "u_sw": (13, 19),
+        "pq": (19, 21),
+        "sw_dim": 6,
+        "sw_names": ["Sa_up", "Sa_dn", "Sb_up", "Sb_dn", "Sc_up", "Sc_dn"],
+    },
 
-MODEL_OFFSET = {"Switching": 0, "IGBT": 21}
+    # 3-level: NPC-offset==0 T-offset==27
+    "3level": {
+        "offset": 0,
+        "z": (0, 5),
+        "u_ext": (5, 10),
+        "vref": (10, 13),
+        "u_sw": (13, 25),
+        "pq": (25, 27),
+        "sw_dim": 12,
+        "sw_names": [
+            "Sa_1", "Sa_2", "Sa_3", "Sa_4",
+            "Sb_5", "Sb_6", "Sb_7", "Sb_8",
+            "Sc_9", "Sc_10", "Sc_11", "Sc_12",
+        ],
+    },
+}
 
 # ===================================================================
 #  Data Processor
@@ -42,7 +69,7 @@ class ConverterDataProcessor:
         """
         :param data_dir:  .mat
         :param ts: simulation sampling step
-        :param converter_model: 'Switching' (0-22) 'IGBT' (22-43)
+        :param converter_model: '2level' '3level'
         :param normalization: 1 Yes
         :param downsample: 1 nodownsample
         :return: dataset
@@ -52,7 +79,8 @@ class ConverterDataProcessor:
         self.converter_model = converter_model
         self.normalization = normalization
         self.downsample = downsample
-        self.offset = MODEL_OFFSET[converter_model]
+        self.layout = COLUMN_LAYOUT[converter_model]
+        self.offset = self.layout["offset"]
         self.file_name = file_name
 
     def _load_single_file(self, file_path: str):
@@ -61,16 +89,21 @@ class ConverterDataProcessor:
         data = mat_data["clean_data"]
 
         off = self.offset
+        layout = self.layout
+
+        z_start, z_end = layout["z"]
+        u_start, u_end = layout["u_ext"]
+        sw_start, sw_end = layout["u_sw"]
 
         # [vcp, vcn, ia, ib, ic]
-        z = data[:, off + COL_Z_START: off + COL_Z_END]
+        z = data[:, off + z_start: off + z_end]
         z[:, 2:5] = -z[:, 2:5]
 
         # [idcp, idcn, ea, eb, ec]
-        u_ext = data[:, off + COL_UEXT_START: off + COL_UEXT_END]
+        u_ext = data[:, off + u_start: off + u_end]
 
         # [Sa_up, Sa_dn, Sb_up, Sb_dn, Sc_up, Sc_dn]
-        u_sw = data[:, off + COL_USW_START: off + COL_USW_END]
+        u_sw = data[:, off + sw_start: off + sw_end]
 
         # downsample
         if self.downsample > 1:
@@ -162,12 +195,16 @@ class ConverterDataProcessor:
 
         output:
             save_dir/
-            {model}_trajectories.pt    # trajectory tensors
-            {model}_meta.pt            # metadata and scalers
+            ├── {model}_dataset.pt    # TensorDataset
+            └── {model}_meta.pt       # scalers
 
         """
         os.makedirs(save_dir, exist_ok=True)
-        tag = self.converter_model  # "Switching" or "IGBT"
+
+        if self.normalization == 1:
+            tag = f"{self.converter_model}_norm"
+        else:
+            tag = self.converter_model
 
         trajectories = self._load_data()
 
@@ -185,7 +222,8 @@ class ConverterDataProcessor:
 
         z_tensor = torch.zeros(N, T, 5, dtype=torch.float32)
         u_tensor = torch.zeros(N, T, 5, dtype=torch.float32)
-        sw_tensor = torch.zeros(N, T, 6, dtype=torch.float32)
+        sw_dim = self.layout["sw_dim"]
+        sw_tensor = torch.zeros(N, T, sw_dim, dtype=torch.float32)
 
         for i, (z, u, sw) in enumerate(normed_trajs):
             z_tensor[i] = torch.from_numpy(z[:T].astype(np.float32))
@@ -216,10 +254,12 @@ class ConverterDataProcessor:
             "feature_names": {
                 "z": ["vcp", "vcn", "ia", "ib", "ic"],
                 "u_ext": ["idcp", "idcn", "ea", "eb", "ec"],
-                "u_sw": ["Sa_up", "Sa_dn", "Sb_up", "Sb_dn", "Sc_up", "Sc_dn"],
+                "u_sw": self.layout["sw_names"],
             },
         }
-        torch.save(meta, os.path.join(save_dir, f"{tag}_meta.pt"))
+        meta_path = os.path.join(save_dir, f"{tag}_meta.pt")
+        torch.save(meta, meta_path)
+        print(f"[SAVE] {meta_path}")
 
 class TrajectorySliceDataset(Dataset):
     """
@@ -262,18 +302,23 @@ class TrajectorySliceDataset(Dataset):
         )
 
 
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--data_dir", type=str, default="raw/", help="raw data directory")
+    parser.add_argument("--data_dir", type=str, default=None, help="raw data directory")
     parser.add_argument("--ts",type=float, default=20e-6, help="time step")
-    parser.add_argument("--converter_model", type=str, default="Switching", help="Switching, IGBT")
-    parser.add_argument("--normalization", type=int, default=0, help="1-yes, 0-no")
+    parser.add_argument("--converter_model", type=str, default="2level", help="2level, 3level")
+    parser.add_argument("--normalization", type=int, default=1, help="1-yes, 0-no")
     parser.add_argument("--downsample", type=int, default=1)
-    parser.add_argument("--save_dir", type=str, default="processed/")
+    parser.add_argument("--save_dir", type=str, default=None)
     parser.add_argument("--file_name", type=str, default="all") # sim_record_001.mat
     args = parser.parse_args()
+
+    if args.data_dir is None:
+        args.data_dir = os.path.join(args.converter_model, "raw")
+
+    if args.save_dir is None:
+        args.save_dir = os.path.join(args.converter_model, "processed")
 
     processor = ConverterDataProcessor(
         data_dir=args.data_dir,
