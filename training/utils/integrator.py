@@ -1,6 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
-"""Utilities for the port-Hamiltonian neural converter project."""
+"""
+@Project ：PaperCode-Neural-Converters-for-AI-EMT-Simulation 
+@File    ：integrator.py
+@Author  ：He Xing
+@Date    ：2026/4/5 21:16 
+"""
 import torch
 
 
