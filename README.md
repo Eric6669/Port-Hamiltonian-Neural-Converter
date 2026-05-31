@@ -285,7 +285,6 @@ Real-time Simulink models and OPAL-RT-oriented assets are organized by topology:
 ```text
 simulink/realtime/2level/
 simulink/realtime/3level/
-simulink/realtime/scale/
 ```
 
 The two-level real-time folder includes detailed IGBT/Diode, switching-function, and AI model variants:
