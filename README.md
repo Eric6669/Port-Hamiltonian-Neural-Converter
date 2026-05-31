@@ -287,16 +287,6 @@ simulink/realtime/2level/
 simulink/realtime/3level/
 ```
 
-The two-level real-time folder includes detailed IGBT/Diode, switching-function, and AI model variants:
-
-```text
-RT_IGBT.slx
-RT_SWF.slx
-RT_AI.slx
-```
-
-The scalability folder contains additional real-time models for larger-scale comparison workflows.
-
 ## Results and Plotting
 
 Validation data and plotting scripts are under `training/plots/`:
