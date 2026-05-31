@@ -4,202 +4,340 @@
 
 ![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)
 ![MATLAB](https://img.shields.io/badge/MATLAB-R2018b-red.svg)
-![Python](https://img.shields.io/badge/Python-3.10.19-blue.svg)
-![PyTorch](https://img.shields.io/badge/PyTorch-2.9.1-ee4c2c.svg)
-![CUDA](https://img.shields.io/badge/CUDA-12.8-76b900.svg)
+![Python](https://img.shields.io/badge/Python-3.10-blue.svg)
+![PyTorch](https://img.shields.io/badge/PyTorch-supported-ee4c2c.svg)
 
 </div>
 
 ## Overview
 
 <p align="center">
-  <img src="https://img.shields.io/badge/EMT_Simulation-✓-blue" alt="EMT Simulation">
-  <img src="https://img.shields.io/badge/Port_Hamiltonian_Modeling-✓-orange" alt="Port-Hamiltonian Modeling">
-  <img src="https://img.shields.io/badge/Neural_Converter-✓-critical" alt="Neural Converter">
+  <img src="docs/framework.png" alt="Physics-priori neural converter framework" width="560">
 </p>
 
-<p align="center">
-  <img src="docs/framework.png" alt="Physics-priori neural converter framework" width="500">
-</p>
+This repository contains the code, trained models, Simulink models, and validation data for a physics-priori neural converter based on port-Hamiltonian neural ordinary differential equations (pH-NODEs). The goal is to provide fast and physically meaningful electromagnetic transient (EMT) models for power-electronic-converter dominated systems.
 
-Power-electronic-converter dominated grids require electromagnetic transient (EMT) models that are simultaneously fast, accurate, and stable over long rollouts. Conventional detailed IGBT/Diode models provide high fidelity but are expensive for real-time simulation, while switching-function models improve speed at the cost of neglected nonlinear and dissipative dynamics. Pure black-box neural surrogates can learn from data, but they do not preserve converter structure and may accumulate non-physical errors.
+The project combines:
 
-This repository provides the implementation of a **physics-priori neural converter** based on **port-Hamiltonian neural ordinary differential equations (pH-NODEs)**. The model preserves the known switching-induced interconnection matrix and learns only uncertain dissipation and parameter mismatch terms. This design improves physical interpretability, enforces positive dissipation through structural parameterization, and supports high-fidelity offline and real-time EMT simulation.
+- detailed Simulink EMT data generation for two-level and three-level converters;
+- preprocessing utilities that convert raw `.mat` trajectories into PyTorch tensors;
+- neural converter models including `pHNODE`, `NODE`, `PINODE`, and `LSTM`;
+- trained checkpoints and MATLAB-exported weights for Simulink deployment;
+- offline Simulink validation and OPAL-RT real-time validation assets.
 
-**Our Contribution:**
-
-- **A physics-priori Port-Hamiltonian neural converter**.
-- **A passivity-based mechanism** supports bounded long-horizon EMT rollout.
-- **Offline and online validation** against detailed IGBT/Diode and switching-function models.
-- **Reproducible code and models** for converter models:
-
-| Label       | Model                          | Role                  |
-|-------------|--------------------------------|-----------------------|
-| **DUB**     | Detailed IGBT/Diode model      | Ground truth          |
-| **SWF**     | Switching-function model       | Real-time comparision |
-| **pH-NODE** | pH-NODE neural converter | Proposed              |
-
-## Environment
-
-### Software Environment
-
-| Component | Version / Configuration |
-|-----------|------------------------|
-| MATLAB/Simulink | R2018b |
-| Python | 3.10.19 |
-| PyTorch | 2.9.1 |
-| CUDA | 12.8 |
-| Training GPU | NVIDIA GeForce RTX 5090 |
-| Real-time simulator | OPAL-RT OP4610XG (AMD Ryzen 3.8 GHz) |
+Compared with pure black-box neural surrogates, the pH-NODE model keeps the known converter structure in the port-Hamiltonian formulation and learns the uncertain nonlinear terms from data. This design improves interpretability and helps maintain stable long-horizon rollouts.
 
 ## Repository Layout
 
 ```text
-├── simulink/
-│   ├── data_generation/        # Parallel Simulink data-generation model and script
-│   ├── offline/                # Offline comparison models
-│   └── realtime/               # RT real-time models for OP4610XG
-│
-├── training/
-│   ├── datasets/
-│   │   ├── raw/                # Raw .mat files generated from Simulink (large, not fully uploaded)
-│   │   ├── processed/          # Preprocessed tensors and metadata
-│   │   └── preprocess.py       # Raw-to-tensor preprocessing script
-│   ├── model/                  # pH-NODE and black-box-NODE model definitions
-│   ├── utils/                  # ODE integrators, losses, and plotting helpers
-│   ├── checkpoints/            # Trained PyTorch weights
-│   ├── plots/                  # Paper figures and exported result data
-│   ├── results/                # Inference output directory
-│   ├── main.py                 # Single entry point for training and inference
-│   ├── train.py                # Supervised rollout training loop
-│   ├── inference.py            # Long-horizon rollout test and error reporting
-│   └── export_to_sim.py        # Export PyTorch weights to MATLAB .mat format
-│
-├── requirements.txt
-└── README.md
+.
+|-- docs/
+|   `-- framework.png
+|-- simulink/
+|   |-- data_generation/
+|   |   |-- level2/        # Two-level converter data-generation model and scripts
+|   |   `-- level3/        # Three-level converter data-generation model and scripts
+|   |-- offline/
+|   |   |-- 2level/        # Offline comparison models and exported pH-NODE weights
+|   |   `-- 3level/
+|   `-- realtime/
+|       |-- 2level/        # OPAL-RT real-time models and weights
+|       `-- 3level/
+|-- training/
+|   |-- datasets/
+|   |   |-- 2level/
+|   |   |   |-- raw/       # Raw .mat data placeholder and Zenodo link
+|   |   |   `-- processed/ # Processed tensor placeholder and Zenodo link
+|   |   `-- 3level/
+|   |       |-- raw/
+|   |       `-- processed/
+|   |-- model/             # pHNODE, NODE, PINODE, LSTM, MLP, and KAN modules
+|   |-- utils/             # Integrators, plotting, and helper utilities
+|   |-- checkpoints/       # Released PyTorch checkpoints and loss curves
+|   |-- plots/             # Offline, online, and real-time plotting data/scripts
+|   |-- results/           # Inference output directory
+|   |-- main.py            # Main training entry point
+|   |-- train.py           # Training loop
+|   |-- train_with_optuna.py
+|   |-- inference.py       # Long-horizon rollout and error reporting
+|   `-- export_to_sim.py   # Export PyTorch checkpoints to MATLAB .mat weights
+|-- requirements.txt
+|-- LICENSE
+`-- README.md
+```
+
+## Environment
+
+The project is organized for MATLAB/Simulink plus Python training.
+
+| Component | Notes |
+|-----------|-------|
+| MATLAB/Simulink | Developed with MATLAB/Simulink R2018b assets |
+| Python | Python 3.10 recommended |
+| PyTorch | Required for training and inference |
+| OPAL-RT | Real-time validation models target OP4610XG workflows |
+
+Install the Python dependencies from the repository root:
+
+```bash
+pip install -r requirements.txt
+```
+
+The current `requirements.txt` includes:
+
+```text
+numpy
+scipy
+torch
+scikit-learn
+matplotlib
+pyinstrument
+```
+
+## Data
+
+Large raw and processed datasets are not stored directly in Git. The dataset placeholder files point to Zenodo records:
+
+| Dataset | Location in repository | Zenodo record |
+|---------|------------------------|---------------|
+| Raw `.mat` trajectories | `training/datasets/2level/raw/`, `training/datasets/3level/raw/` | https://zenodo.org/records/20422710 |
+| Processed PyTorch tensors | `training/datasets/2level/processed/`, `training/datasets/3level/processed/` | https://zenodo.org/records/20463176 |
+
+Download the data and place the files under the matching topology directory before training or inference. For example:
+
+```text
+training/datasets/2level/raw/sim_record_001.mat
+training/datasets/2level/processed/2level_trajectories.pt
+training/datasets/2level/processed/2level_meta.pt
 ```
 
 ## Workflow
 
-The full pipeline from data generation to real-time validation is illustrated below. Each step is detailed in the sections that follow.
+### 1. Generate Raw Data in Simulink
+
+The Simulink data-generation assets are separated by converter topology:
 
 ```text
- ┌──────────────────┐     ┌───────────────┐     ┌──────────────┐     ┌─────────────┐
- │  Data Generation │─────│ Preprocessing │─────│   Training   │─────│  Inference  │
- │    (Simulink)    │     │   (Python)    │     │   (Python)   │     │   (Python)  │
- └──────────────────┘     └───────────────┘     └──────────────┘     └──────┬──────┘
-                                                                            │
-                                              ┌─────────────────────────────┘
-                                              ▼
-                                   ┌────────────────────┐
-                                   │ Export to Simulink │
-                                   │  (export_to_sim)   │
-                                   └─────────┬──────────┘
-                                             │
-                              ┌──────────────┴──────────────┐
-                              ▼                             ▼
-                   ┌────────────────────┐         ┌───────────────────┐
-                   │ Offline Validation │         │  RT / Real-Time  │
-                   │    (Simulink)      │         │    (OPAL-RT)      │
-                   └────────────────────┘         └───────────────────┘
+simulink/data_generation/level2/
+simulink/data_generation/level3/
 ```
 
-### Step 1 — Data Generation (Simulink)
+Use the corresponding MATLAB script and model:
 
-Generate broadband transient trajectories by injecting random sinusoidal perturbations into operating-condition references (active power, reactive power, dc voltage, ac voltage). The dataset used in the paper consists of 200 independent 3-second simulations at a 20 μs step size.
+| Topology | MATLAB script | Simulink model |
+|----------|---------------|----------------|
+| Two-level converter | `Parsim_for_ai_2level.m` | `Parsim_for_2level.mdl` |
+| Three-level converter | `Parsim_for_ai_3level.m` | `Parsim_for_3level.mdl` |
 
-**Files:**
-- `simulink/data_generation/Parim_for_ai.mdl` — Simulink model for parallel trajectory generation.
-- `simulink/data_generation/Parsim_for_ai.m` — MATLAB script that randomizes conditions, runs parallel simulations, and saves raw `.mat` records.
+Generated raw trajectories should be saved as `.mat` files under:
 
-Run the `Parsim_for_ai.m` and place the generated raw data under `training/datasets/raw/`.
+```text
+training/datasets/2level/raw/
+training/datasets/3level/raw/
+```
 
-### Step 2 — Preprocessing
+### 2. Preprocess Data
 
-Convert raw `.mat` trajectories into normalized PyTorch tensors:
+From the `training/` directory, convert raw MATLAB trajectories into PyTorch tensors:
 
 ```bash
 cd training
-python datasets/preprocess.py --converter_model IGBT --normalization 0
+python datasets/preprocess.py --converter_model 2level --normalization 1
 ```
 
-The released processed data are based on the **IGBT/Diode detailed model**. Use `--converter_model Switching` only if you intentionally want to build a switching-function surrogate model.
-
-### Step 3 — Train and Inference
-
-Install dependencies and launch training:
+For the three-level converter:
 
 ```bash
-pip install -r requirements.txt
-
-cd training
-python main.py converter_model IGBT converter_neural_model ConverterPHNN \
-    --R_type NonlinearDiag2 --Pinv_type nominal --arch mlp --integrate_method euler
+python datasets/preprocess.py --converter_model 3level --normalization 1
 ```
 
-The trained checkpoint is saved to:
+Useful options:
 
-```text
-training/checkpoints/IGBT_ConverterPHNN_RNonlinearDiag2_Pinvnominal_archmlp.pt
-```
+| Option | Meaning |
+|--------|---------|
+| `--converter_model` | `2level` or `3level` |
+| `--normalization` | `1` to save normalized tensors, `0` to save raw-scale tensors |
+| `--downsample` | Downsampling factor |
+| `--file_name` | `all` or a single `.mat` file name |
+| `--data_dir` | Optional custom raw data directory |
+| `--save_dir` | Optional custom processed data directory |
 
-### Step 4 — Export to Simulink
+### 3. Train Neural Converter Models
 
-Convert the trained PyTorch weights into a MATLAB `.mat` file for use in Simulink:
+The main training entry point is:
 
 ```bash
 cd training
-python export_to_sim.py
+python main.py
 ```
 
-Generated pre-exported weight files are already included:
+`main.py` exposes command-line options for topology, model family, network size, ODE integration, loss weighting, and training settings. The supported neural model names are:
 
 ```text
-simulink/offline/phnode_weights_3_8.mat
-simulink/realtime/phnode_weights_3_8.mat
+pHNODE
+NODE
+PINODE
+LSTM
 ```
 
-### Step 5 — Offline Validation (Simulink)
+Example pH-NODE training command:
 
-Compare models under open-loop and closed-loop scenarios inside Simulink.
+```bash
+python main.py --converter_model 2level --converter_neural_model pHNODE \
+  --hidden_dim 8 --layers 3 --integrate_method euler \
+  --normalization 1 --epochs 50 --batch_size 512
+```
 
-**Files:**
-- `simulink/offline/Compare_AI_kk.mdl` — comparison models.
-- `simulink/offline/Net_improve_init.m` — converter and simulation parameter initialization.
-- `simulink/offline/Export_result_plot.m` — exports Simulink variables to `.mat` for plotting.
-- `simulink/offline/Compare_error.m` — computes RMSE, MAE, NRMSE, and relative RMSE.
+Example black-box NODE command:
 
-**Procedure:**
+```bash
+python main.py --converter_model 2level --converter_neural_model NODE \
+  --hidden_dim 128 --layers 4 --integrate_method euler \
+  --normalization 1 --epochs 200 --batch_size 2048
+```
 
-1. Open `Compare_AI_kk.mdl` and run the desired scenario.
-2. Run `Export_result_plot.m` to save `Y_IGBT.mat`, `Y_pred.mat`, `Y_SWF.mat`.
-3. Run `Compare_error.m` to compute error metrics against DUB.
+Training saves checkpoints and loss curves to:
 
-### Step 6 — Real-Time Validation (OPAL-RT)
+```text
+training/checkpoints/
+```
 
-Deploy models on the OP4610XG real-time simulator for hardware-in-the-loop testing.
+Checkpoint names follow:
 
-**Files:**
-- `simulink/realtime/RT_IGBT.slx` — detailed IGBT/Diode model.
-- `simulink/realtime/RT_SWF.slx` — switching-function model.
-- `simulink/realtime/RT_AI.slx` — pH-NODE neural converter.
-- `simulink/realtime/Net_improve_init.m` and `phnode_weights_3_8.mat` — initialization and weights.
+```text
+<converter_model>_<converter_neural_model>.pt
+```
 
-## Performance Validation Results
+The repository includes released checkpoints for:
 
-The repository includes exported result data and figures for the paper's three validation cases:
+```text
+2level_pHNODE.pt
+2level_NODE.pt
+2level_PINODE.pt
+2level_LSTM.pt
+3level_pHNODE.pt
+```
 
-| Case | Directory |
-|------|-----------|
-| Open-loop (ac sag + dc step) | `training/plots/open_1.0s_ac_1.0_0.8_2.0s_dc_3000_2800/` |
-| Closed-loop (power step + dc step) | `training/plots/close_1.0s_p_0.8_0.6_2.0s_dc_3000_2800/` |
-| RT (dc step + power step) | `training/plots/RT_1.0s_dc_3000_3200_2.0s_p_0.8_0.6/` |
+### 4. Run Inference
 
-Each directory contains the exported `.mat` files and SVG comparison figures. The RT directory additionally includes raw OPAL-RT exports and `from_RT_to_py.m` for format conversion.
+Inference is implemented in `training/inference.py` and is invoked by `main.py` after training in the current workflow. It loads a raw `.mat` trajectory, the matching processed metadata, and a checkpoint from `training/checkpoints/`, then writes rollout plots under:
+
+```text
+training/results/<converter_model>/
+```
+
+The default inference file is:
+
+```text
+sim_record_001.mat
+```
+
+Use `--infer_file`, `--Ts`, and `--chunk_size` to change the rollout configuration.
+
+### 5. Export Weights to Simulink
+
+Use `export_to_sim.py` to convert a PyTorch checkpoint into MATLAB `.mat` weights:
+
+```bash
+cd training
+python export_to_sim.py --converter_model 2level --converter_neural_model pHNODE
+```
+
+The script looks for:
+
+```text
+training/checkpoints/<converter_model>_<converter_neural_model>.pt
+```
+
+and exports MATLAB weight files that can be used by the Simulink models. Pre-exported weights are already included in the Simulink folders:
+
+```text
+simulink/offline/2level/2level_pHNODE_weights.mat
+simulink/offline/3level/3level_pHNODE_weights.mat
+simulink/realtime/2level/2level_pHNODE_weights.mat
+simulink/realtime/3level/3level_pHNODE_weights.mat
+simulink/realtime/scale/2level_pHNODE_weights.mat
+```
+
+### 6. Offline Validation in Simulink
+
+Offline Simulink comparison models are stored under:
+
+```text
+simulink/offline/2level/
+simulink/offline/3level/
+```
+
+Key files include:
+
+| File | Purpose |
+|------|---------|
+| `Compare_2level.mdl`, `AI_Compare_2level.mdl` | Two-level offline comparison models |
+| `Compare_3level.mdl` | Three-level offline comparison model |
+| `Net_improve_init.m` | Converter and simulation initialization |
+| `Export_result_plot.m` | Export Simulink results for Python/MATLAB plotting |
+| `Compare_error.m` | Compute error metrics |
+
+### 7. Real-Time Validation
+
+Real-time Simulink models and OPAL-RT-oriented assets are organized by topology:
+
+```text
+simulink/realtime/2level/
+simulink/realtime/3level/
+simulink/realtime/scale/
+```
+
+The two-level real-time folder includes detailed IGBT/Diode, switching-function, and AI model variants:
+
+```text
+RT_IGBT.slx
+RT_SWF.slx
+RT_AI.slx
+```
+
+The scalability folder contains additional real-time models for larger-scale comparison workflows.
+
+## Results and Plotting
+
+Validation data and plotting scripts are under `training/plots/`:
+
+```text
+training/plots/open_loop_2level/
+training/plots/close_loop_2level/
+training/plots/closed_loop_3level/
+training/plots/real_time_2level/
+```
+
+Plotting utilities include:
+
+| Script | Purpose |
+|--------|---------|
+| `offline_plot_result.py` | Offline validation figures |
+| `online_plot_result.py` | Online/real-time validation figures |
+| `testai_plot_result.py` | AI rollout plotting |
+| `computa_cost_result.py` | Computational-cost result analysis |
+
+## Model Summary
+
+| Model | File | Role |
+|-------|------|------|
+| `pHNODE` | `training/model/pHNODE.py` | Proposed port-Hamiltonian neural ODE converter |
+| `NODE` | `training/model/NODE.py` | Black-box neural ODE baseline |
+| `PINODE` | `training/model/PINODE.py` | Physics-informed NODE baseline |
+| `LSTM` | `training/model/LSTM.py` | Sequence-model baseline |
+| `pHNN` | `training/model/pHNN.py` | Port-Hamiltonian neural network component |
+
+## Notes
+
+- Keep large generated raw data outside Git or download it from Zenodo into the dataset folders.
+- Run Python commands from `training/` unless a script explicitly documents another working directory.
+- Ensure that the selected `--converter_model` matches the dataset, checkpoint, and Simulink weight file being used.
+- For normalized training or inference, the matching `*_norm_meta.pt` file must be present in the processed dataset directory.
 
 ## Citation
 
-If you find this work useful, please cite:
+If you find this repository useful, please cite the related paper:
 
 ```bibtex
 @article{
